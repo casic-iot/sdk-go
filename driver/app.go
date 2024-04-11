@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -687,6 +688,10 @@ func (p *app) WritePoints(point Point) error {
 		case float32:
 			value = decimal.NewFromFloat32(valueTmp)
 		case float64:
+			if math.IsNaN(valueTmp) || math.IsInf(valueTmp, 0) {
+				p.Logger.Warnf("资产 [%s] 设备数据点 %s 值不合法: %s", point.ID, tag.ID)
+				continue
+			}
 			value = decimal.NewFromFloat(valueTmp)
 		case uint:
 			value = decimal.NewFromInt(int64(valueTmp))
