@@ -58,3 +58,37 @@ func TestGetValueByType(t *testing.T) {
 		})
 	}
 }
+
+func TestBytesToFloat16(t *testing.T) {
+	type args struct {
+		b []byte
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    float32
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			name: "1",
+			args: args{
+				b: []byte{0x00, 0x07},
+			},
+			want:    -0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BytesToFloat16(tt.args.b)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BytesToFloat16() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("BytesToFloat16() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

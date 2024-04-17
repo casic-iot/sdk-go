@@ -1,7 +1,9 @@
 package numberx
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -305,4 +307,42 @@ func GetBool(v interface{}) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("不能转布尔类型,数据类型未知或错误")
+}
+
+// BytesToFloat16 将二进制形式的字节数组转换为对应的16位浮点数。
+func BytesToFloat16(b []byte) (float32, error) {
+	if len(b) != 2 {
+		return 0, fmt.Errorf("invalid length: needed 2 bytes but got %d", len(b))
+	}
+
+	// 假设字节是大端序编排。
+	bits := binary.BigEndian.Uint16(b)
+
+	// 单独提取符号、指数和尾数位。
+	sign := bits >> 15
+	exp := (bits >> 10) & 0x1F
+	frac := bits & 0x3FF
+
+	// 处理不同情况。
+	switch exp {
+	case 0:
+		if frac == 0 {
+			return float32(0), nil // 零值
+		}
+		// 非规格数 (subnormal)
+		return float32(-1+int(sign)*2) * float32(math.Pow(2, -14)) * (float32(frac) / 1024), nil
+	case 0x1F: // 指数位全为1处理无穷和NaN
+		if frac == 0 {
+			if sign == 0 {
+				return float32(math.Inf(1)), nil // 正无穷
+			}
+			return float32(math.Inf(-1)), nil // 负无穷
+		}
+		return float32(math.NaN()), nil // NaN
+	default:
+		// 规格化数值
+		mantissa := 1 + float32(frac)/1024
+		exponent := math.Pow(2, float64(exp)-15)
+		return float32(-1+int(sign)*2) * mantissa * float32(exponent), nil
+	}
 }
