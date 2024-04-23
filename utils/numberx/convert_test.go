@@ -92,3 +92,42 @@ func TestBytesToFloat16(t *testing.T) {
 		})
 	}
 }
+
+func TestFloat16ToBytes(t *testing.T) {
+	type args struct {
+		f float32
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Float16ToBytes(tt.args.f)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Float16ToBytes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Float16ToBytes() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFloat16(t *testing.T) {
+	b := []byte{0x00, 0x01}
+	f, err := BytesToFloat16(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := Float16ToBytes(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(bytes)
+}
