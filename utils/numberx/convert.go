@@ -315,82 +315,63 @@ func BytesToFloat16(b []byte) (float32, error) {
 		return 0, fmt.Errorf("invalid length: needed 2 bytes but got %d", len(b))
 	}
 
-	// 假设字节是大端序编排。
 	bits := binary.BigEndian.Uint16(b)
 
-	// 单独提取符号、指数和尾数位。
 	sign := bits >> 15
 	exp := (bits >> 10) & 0x1F
 	frac := bits & 0x3FF
 
-	// 处理不同情况。
-	switch exp {
-	case 0:
+	var f float32
+	if exp == 0 {
+		f = float32(frac) / 1024
+	} else if exp == 31 {
 		if frac == 0 {
-			return float32(0), nil // 零值
-		}
-		// 非规格数 (subnormal)
-		return float32(-1+int(sign)*2) * float32(math.Pow(2, -14)) * (float32(frac) / 1024), nil
-	case 0x1F: // 指数位全为1处理无穷和NaN
-		if frac == 0 {
-			if sign == 0 {
-				return float32(math.Inf(1)), nil // 正无穷
+			if sign == 1 {
+				return float32(math.Inf(-1)), nil
 			}
-			return float32(math.Inf(-1)), nil // 负无穷
+			return float32(math.Inf(1)), nil
 		}
-		return float32(math.NaN()), nil // NaN
-	default:
-		// 规格化数值
-		mantissa := 1 + float32(frac)/1024
-		exponent := math.Pow(2, float64(exp)-15)
-		return float32(-1+int(sign)*2) * mantissa * float32(exponent), nil
+		return float32(math.NaN()), nil
+	} else {
+		f = 1 + float32(frac)/1024
 	}
+
+	if sign == 1 {
+		f = -f
+	}
+
+	exp -= 15
+	f *= float32(math.Pow(2, float64(exp)))
+
+	return f, nil
 }
 
 // Float16ToBytes 将16位浮点数转换为对应的二进制形式字节数组。
 func Float16ToBytes(f float32) ([]byte, error) {
-	if f == 0 {
-		return []byte{0x00, 0x00}, nil
-	}
-
-	if math.IsNaN(float64(f)) {
-		// Use a general pattern for NaN
-		return []byte{0x7E, 0x00}, nil
-	}
-
-	if math.IsInf(float64(f), 1) {
-		// Positive infinity
-		return []byte{0x7C, 0x00}, nil
-	}
-
-	if math.IsInf(float64(f), -1) {
-		// Negative infinity
-		return []byte{0xFC, 0x00}, nil
-	}
-
-	sign := uint16(0)
+	var sign uint16
 	if f < 0 {
 		sign = 1 << 15
-		f = -f // Take the absolute value for processing
+		f = -f
 	}
 
 	absf := float64(f)
+	if absf == 0 {
+		return []byte{0x00, 0x00}, nil
+	}
+
 	exp := int(math.Floor(math.Log2(absf))) + 15
 	mantf := absf/math.Pow(2, float64(exp-15)) - 1
 
-	if exp <= 0 {
-		// Handle subnormal numbers
+	if exp <= 0 { // Subnormal
 		mantf = absf / math.Pow(2, -14)
 		exp = 0
-	} else if exp >= 31 {
-		// Handle overflow by returning an error
-		return nil, fmt.Errorf("value %v is out of range for Float16", float64(f))
+	} else if exp > 30 { // Overflow to infinity
+		return []byte{0x7C, 0x00}, nil
 	}
 
-	mant := uint16(mantf*1024) & 0x03FF
+	mant := uint16(mantf * 1024)
 
-	// Now pack the sign, exp, and mantissa into a 16-bit format.
-	bits := sign | uint16(exp<<10&0x7C00) | mant
+	bits := sign | (uint16(exp&0x1F) << 10) | (mant & 0x3FF)
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, bits)
 	return b, nil

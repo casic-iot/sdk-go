@@ -131,3 +131,17 @@ func TestFloat16(t *testing.T) {
 	}
 	t.Log(bytes)
 }
+
+func TestFloat16_1(t *testing.T) {
+	b, err := Float16ToBytes(-1.6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(b)
+
+	f, err := BytesToFloat16(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(f)
+}
