@@ -84,6 +84,10 @@ func NewApp() App {
 	return a
 }
 
+func (a *app) GetProjectId() string {
+	return Cfg.Project
+}
+
 // Start 开始服务
 func (a *app) Start(ext DataRelay) {
 	a.stopped = false
