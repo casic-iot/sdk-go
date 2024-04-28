@@ -1,0 +1,16 @@
+service:
+  id: test1
+  name: test
+
+log:
+  level: 5
+
+dataRelayGrpc:
+  host: localhost
+  port: 9232
+  healthRequestTime: 10s
+  waitTime: 5s
+
+serviceId: testid
+project: zq
+

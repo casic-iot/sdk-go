@@ -3,9 +3,9 @@ package flow_extionsion
 import (
 	"context"
 	"fmt"
-	"github.com/air-iot/errors"
 	"time"
 
+	"github.com/air-iot/errors"
 	"github.com/air-iot/json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

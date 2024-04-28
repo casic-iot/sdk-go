@@ -133,7 +133,7 @@ func TestFloat16(t *testing.T) {
 }
 
 func TestFloat16_1(t *testing.T) {
-	b, err := Float16ToBytes(-1.6)
+	b, err := Float16ToBytes(4.11)
 	if err != nil {
 		t.Fatal(err)
 	}
