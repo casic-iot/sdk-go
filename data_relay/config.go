@@ -9,10 +9,10 @@ import (
 var Cfg = new(Config)
 
 type Config struct {
-	Log       logger.Config `json:"log" yaml:"log"`
-	ServiceID string        `json:"serviceId" yaml:"serviceId" mapstructure:"serviceId"`
-	Project   string        `json:"project" yaml:"project" mapstructure:"project"`
-	Service   struct {
+	Log        logger.Config `json:"log" yaml:"log"`
+	InstanceID string        `json:"instanceId" yaml:"instanceId" mapstructure:"instanceId"`
+	Project    string        `json:"project" yaml:"project" mapstructure:"project"`
+	Service    struct {
 		ID   string `json:"id" yaml:"id"`
 		Name string `json:"name" yaml:"name"`
 	} `json:"service" yaml:"service"`

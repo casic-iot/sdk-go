@@ -11,6 +11,6 @@ dataRelayGrpc:
   healthRequestTime: 10s
   waitTime: 5s
 
-serviceId: testid
+instanceId: testid
 project: zq
 

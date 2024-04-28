@@ -175,7 +175,7 @@ func (c *Client) healthCheck(ctx context.Context) {
 func (c *Client) healthRequest(ctx context.Context) (*pb.HealthCheckResponse, error) {
 	reqCtx, reqCancel := context.WithTimeout(ctx, Cfg.DataRelayGrpc.Health.RequestTime)
 	defer reqCancel()
-	healthRes, err := c.cli.HealthCheck(reqCtx, &pb.HealthCheckRequest{Service: Cfg.ServiceID, ProjectId: Cfg.Project, Type: Cfg.Service.ID})
+	healthRes, err := c.cli.HealthCheck(reqCtx, &pb.HealthCheckRequest{Service: Cfg.InstanceID, ProjectId: Cfg.Project, Type: Cfg.Service.ID})
 	return healthRes, err
 }
 
@@ -222,7 +222,7 @@ func (c *Client) startSteam(ctx context.Context) {
 }
 
 func (c *Client) StartStream(ctx context.Context) error {
-	stream, err := c.cli.StartStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Service.ID, Cfg.Service.Name))
+	stream, err := c.cli.StartStream(dGrpc.GetGrpcContext(ctx, Cfg.InstanceID, Cfg.Project, Cfg.Service.ID, Cfg.Service.Name))
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (c *Client) StartStream(ctx context.Context) error {
 }
 
 func (c *Client) HttpProxyStream(ctx context.Context) error {
-	stream, err := c.cli.HttpProxyStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Service.ID, Cfg.Service.Name))
+	stream, err := c.cli.HttpProxyStream(dGrpc.GetGrpcContext(ctx, Cfg.InstanceID, Cfg.Project, Cfg.Service.ID, Cfg.Service.Name))
 	if err != nil {
 		return err
 	}
