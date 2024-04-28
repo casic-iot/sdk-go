@@ -17,6 +17,7 @@ import (
 
 type App interface {
 	Start(ext DataRelay)
+	GetProjectId() string
 }
 
 // app 数据采集类
