@@ -24,7 +24,9 @@ type Config struct {
 		Host   string `json:"host" yaml:"host"`
 		Port   string `json:"port" yaml:"port"`
 	} `json:"pprof" yaml:"pprof"`
-	API        grpcConfig.Config
 	EtcdConfig string      `json:"etcdConfig" yaml:"etcdConfig"`
 	Etcd       etcd.Config `json:"etcd" yaml:"etcd"`
+	App        struct {
+		API grpcConfig.Config `json:"api" yaml:"API"`
+	} `json:"app" yaml:"app"`
 }

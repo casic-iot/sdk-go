@@ -1,6 +1,7 @@
 package data_relay
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	api_client_go "github.com/air-iot/api-client-go/v4"
+	"github.com/air-iot/json"
 	"github.com/air-iot/logger"
 	"github.com/air-iot/sdk-go/v4/etcd"
 	"github.com/spf13/pflag"
@@ -33,7 +35,7 @@ type app struct {
 	clean     func()
 }
 
-func init() {
+func Init() {
 	// 设置随机数种子
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	pflag.String("project", "default", "项目id")
@@ -75,6 +77,25 @@ func init() {
 
 // NewApp 创建App
 func NewApp() App {
+	Init()
+	err := etcd.ScanEtcd(Cfg.EtcdConfig, Cfg.Etcd, Cfg)
+	if err != nil {
+		panic(fmt.Errorf("读etcd错误,%w", err))
+	}
+	var cfgMap map[string]interface{}
+	if err := json.CopyByJson(&cfgMap, Cfg); err != nil {
+		panic(fmt.Errorf("转配置为map错误,%w", err))
+	}
+
+	if err := viper.MergeConfigMap(cfgMap); err != nil {
+		panic(fmt.Errorf("合并map配置错误,%w", err))
+	}
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Errorf("读取配置错误,%w", err))
+	}
+	if err := viper.Unmarshal(Cfg); err != nil {
+		panic(fmt.Errorf("配置解析错误,%w", err))
+	}
 	a := new(app)
 	if Cfg.Service.ID == "" || Cfg.Service.Name == "" {
 		panic("服务 id 和 name 不能为空")
@@ -99,7 +120,7 @@ func NewApp() App {
 		panic(err)
 	}
 	a.etcdConn = conn
-	apiCli, clean, err := api_client_go.NewClient(conn, Cfg.API)
+	apiCli, clean, err := api_client_go.NewClient(conn, Cfg.App.API)
 	if err != nil {
 		panic(err)
 	}

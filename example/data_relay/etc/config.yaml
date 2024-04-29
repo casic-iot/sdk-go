@@ -18,3 +18,8 @@ etcdConfig: /airiot/config/dev.json
 etcd:
   endpoints:
     - 121.89.244.23:2379
+
+app:
+  api:
+    Metadata:
+      env: aliyun
