@@ -1,3 +1,4 @@
-driver:
+
+service:
   id: go-example-server
   name: 北向接口例子

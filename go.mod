@@ -12,6 +12,8 @@ require (
 	github.com/dop251/goja_nodejs v0.0.0-20231122114759-e84d9a924c5c
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-kratos/kratos/contrib/config/etcd/v2 v2.0.0-20230706115902-bffc1a0989a6
+	github.com/go-kratos/kratos/v2 v2.7.2
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/jmoiron/sqlx v1.3.5
@@ -41,9 +43,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-kratos/aegis v0.2.0 // indirect
-	github.com/go-kratos/kratos/contrib/config/etcd/v2 v2.0.0-20230706115902-bffc1a0989a6 // indirect
 	github.com/go-kratos/kratos/contrib/registry/etcd/v2 v2.0.0-20240105030612-34d9666e0e1b // indirect
-	github.com/go-kratos/kratos/v2 v2.7.2 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/form/v4 v4.2.1 // indirect

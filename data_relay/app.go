@@ -39,7 +39,7 @@ func Init() {
 	// 设置随机数种子
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	pflag.String("project", "default", "项目id")
-	pflag.String("serviceId", "", "服务id")
+	pflag.String("instanceId", "", "服务id")
 	cfgPath := pflag.String("config", "./etc/", "配置文件")
 	pflag.Parse()
 	viper.SetDefault("log.level", 4)
