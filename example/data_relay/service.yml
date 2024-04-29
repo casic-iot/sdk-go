@@ -1,0 +1,21 @@
+# 必填项. 驱动名称
+Name: go-example-server
+# 必填项. 例如: 1.0.0, 通常用镜像版本号一致
+Version: 4.0.0
+# 非必填项.
+Description: 描述信息
+# 必填项. 驱动固定为 driver、流程插件、算法服务为 server ,北向中转服务为 dataRelay
+GroupName: dataRelay
+# 容器端口映射类型, 非必填项. 如果驱动需要对外提供 rest 服务, 或暴露端口时, 需要填写该配置项.
+# 可选项有 None Internal External
+#
+# None: 不暴露端口
+# Internal: 只在平台内部暴露端口. 一般为驱动对外提供 rest 服务时, 将端口映射到网关上, 填写为 Internal 即可.
+# External: 对外暴露端口. 一般为驱动为作 server 端, 需要对外暴露端口以供设备连接, 此时该端口会暴露在宿主机上, 填写为 External 即可.
+Service: External
+
+# 非必填项. 暴露的端口列表
+#Ports:
+#  - Host: "8558"            # 映射到宿主机的端口号, 如果不填写, 则会随机分配一个端口号
+#    Container: "8558"       # 容器内部的端口号, 即驱动服务监听的端口号
+#    Protocol: ""            # 协议类型, 可选项有 TCP UDP, 如果不填写, 则默认为 TCP

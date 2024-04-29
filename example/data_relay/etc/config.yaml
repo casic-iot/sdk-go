@@ -14,3 +14,7 @@ dataRelayGrpc:
 instanceId: testid
 project: zq
 
+etcdConfig: /airiot/config/dev.json
+etcd:
+  endpoints:
+    - 121.89.244.23:2379

@@ -10,21 +10,27 @@ import (
 	"runtime"
 	"syscall"
 
+	api_client_go "github.com/air-iot/api-client-go/v4"
 	"github.com/air-iot/logger"
+	"github.com/air-iot/sdk-go/v4/etcd"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type App interface {
 	Start(ext DataRelay)
 	GetProjectId() string
+	GetAPIClient() *api_client_go.Client
 }
 
 // app 数据采集类
 type app struct {
-	stopped bool
-	cli     *Client
-	clean   func()
+	stopped   bool
+	cli       *Client
+	etcdConn  *clientv3.Client
+	apiClient *api_client_go.Client
+	clean     func()
 }
 
 func init() {
@@ -44,6 +50,12 @@ func init() {
 	viper.SetDefault("dataRelayGrpc.waitTime", "5s")
 	viper.SetDefault("dataRelayGrpc.timeout", "600s")
 	viper.SetDefault("dataRelayGrpc.limit", 100)
+	viper.SetDefault("dataRelayGrpc.limit", 100)
+	viper.SetDefault("etcdConfig", "/airiot/config/dev.json")
+	viper.SetDefault("etcd.endpoints", []string{"etcd:2379"})
+	viper.SetDefault("etcd.username", "root")
+	viper.SetDefault("etcd.password", "dell123")
+	viper.SetDefault("etcd.dialTimeout", 60)
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
@@ -70,7 +82,7 @@ func NewApp() App {
 	Cfg.Log.Syslog.ServiceName = Cfg.Service.ID
 	logger.InitLogger(Cfg.Log)
 	logger.Debugf("配置=%+v", *Cfg)
-	a.clean = func() {}
+
 	if Cfg.Pprof.Enable {
 		go func() {
 			//  路径/debug/pprof/
@@ -82,11 +94,33 @@ func NewApp() App {
 			}
 		}()
 	}
+	conn, err := etcd.NewConn(Cfg.Etcd)
+	if err != nil {
+		panic(err)
+	}
+	a.etcdConn = conn
+	apiCli, clean, err := api_client_go.NewClient(conn, Cfg.API)
+	if err != nil {
+		panic(err)
+	}
+	a.apiClient = apiCli
+	a.clean = func() {
+		clean()
+		err := conn.Close()
+		if err != nil {
+			logger.Errorf("关闭etcd: %v", err)
+		}
+	}
+
 	return a
 }
 
 func (a *app) GetProjectId() string {
 	return Cfg.Project
+}
+
+func (a *app) GetAPIClient() *api_client_go.Client {
+	return a.apiClient
 }
 
 // Start 开始服务
@@ -100,5 +134,6 @@ func (a *app) Start(ext DataRelay) {
 	close(ch)
 	cli.Stop()
 	logger.Debugf("关闭服务: 信号=%v", sig)
+	a.clean()
 	os.Exit(0)
 }
