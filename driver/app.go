@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"net"
 	"net/http"
@@ -63,7 +62,7 @@ type app struct {
 	cacheValue sync.Map
 }
 
-func init() {
+func Init() {
 	// 设置随机数种子
 	//rand.Seed(time.Now().Unix())
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -71,7 +70,6 @@ func init() {
 	pflag.String("serviceId", "", "服务id")
 	pflag.String("groupId", "", "组id")
 	cfgPath := pflag.String("config", "./etc/", "配置文件")
-	pflag.Parse()
 	viper.SetDefault("log.level", 4)
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("log.output", "stdout")
@@ -100,23 +98,28 @@ func init() {
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
+	pflag.Parse()
 	viper.AddConfigPath(*cfgPath)
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
-		log.Fatalln("读取命令行参数错误,", err.Error())
+		panic(fmt.Errorf("读取命令行参数错误: %w", err))
 	}
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("读取配置错误,", err.Error())
+		panic(fmt.Errorf("读取配置错误: %w", err))
 	}
 	if err := viper.Unmarshal(Cfg); err != nil {
-		log.Fatalln("配置解析错误: ", err.Error())
+		panic(fmt.Errorf("配置解析错误: %w", err))
 	}
 }
 
 // NewApp 创建App
 func NewApp() App {
+	Init()
 	a := new(app)
+	if Cfg.Project == "" {
+		panic("项目id未配置或未传参")
+	}
 	if Cfg.ServiceID == "" {
-		panic("服务id不能为空")
+		panic("服务id未配置或未传参")
 	}
 	if Cfg.Driver.ID == "" || Cfg.Driver.Name == "" {
 		panic("驱动id或name不能为空")
@@ -124,10 +127,10 @@ func NewApp() App {
 	Cfg.Log.Syslog.ProjectId = Cfg.Project
 	Cfg.Log.Syslog.ServiceName = fmt.Sprintf("%s-%s-%s", Cfg.Project, Cfg.ServiceID, Cfg.Driver.ID)
 	logger.InitLogger(Cfg.Log)
-	logger.Debugf("配置: %+v", *Cfg)
+	logger.Infof("启动配置=%+v", *Cfg)
 	mqConn, clean, err := mq.NewMQ(Cfg.MQ)
 	if err != nil {
-		panic(fmt.Errorf("初始化消息队列错误,%s", err))
+		panic(fmt.Errorf("初始化消息队列错误: %w", err))
 	}
 	a.mq = mqConn
 	a.clean = func() {

@@ -41,7 +41,6 @@ func Init() {
 	pflag.String("project", "default", "项目id")
 	pflag.String("instanceId", "", "服务id")
 	cfgPath := pflag.String("config", "./etc/", "配置文件")
-	pflag.Parse()
 	viper.SetDefault("log.level", 4)
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("log.output", "stdout")
@@ -62,16 +61,17 @@ func Init() {
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
+	pflag.Parse()
 	log.Println("配置文件路径", *cfgPath)
 	viper.AddConfigPath(*cfgPath)
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
-		log.Fatalln("读取命令行参数错误,", err.Error())
+		panic(fmt.Errorf("读取命令行参数错误: %w", err))
 	}
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("读取配置错误,", err.Error())
+		panic(fmt.Errorf("读取配置错误: %w", err))
 	}
 	if err := viper.Unmarshal(Cfg); err != nil {
-		log.Fatalln("配置解析错误: ", err.Error())
+		panic(fmt.Errorf("配置解析错误: %w", err))
 	}
 }
 
@@ -97,13 +97,19 @@ func NewApp() App {
 		panic(fmt.Errorf("配置解析错误,%w", err))
 	}
 	a := new(app)
-	if Cfg.Service.ID == "" || Cfg.Service.Name == "" {
-		panic("服务 id 和 name 不能为空")
+	if Cfg.Project == "" {
+		panic("项目id未配置或未传参")
 	}
-	Cfg.Log.Syslog.ServiceName = Cfg.Service.ID
+	if Cfg.InstanceID == "" {
+		panic("实例id未配置或未传参")
+	}
+	if Cfg.Service.ID == "" || Cfg.Service.Name == "" {
+		panic("服务id和name不能为空")
+	}
+	Cfg.Log.Syslog.ProjectId = Cfg.Project
+	Cfg.Log.Syslog.ServiceName = fmt.Sprintf("%s-%s-%s", Cfg.Project, Cfg.InstanceID, Cfg.Service.ID)
 	logger.InitLogger(Cfg.Log)
-	logger.Debugf("配置=%+v", *Cfg)
-
+	logger.Infof("启动配置=%+v", *Cfg)
 	if Cfg.Pprof.Enable {
 		go func() {
 			//  路径/debug/pprof/

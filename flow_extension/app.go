@@ -1,6 +1,7 @@
 package flow_extionsion
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -26,11 +27,10 @@ type app struct {
 	clean   func()
 }
 
-func init() {
+func Init() {
 	// 设置随机数种子
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	cfgPath := pflag.String("config", "./etc/", "配置文件")
-	pflag.Parse()
 	viper.SetDefault("log.level", 4)
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("log.output", "stdout")
@@ -41,29 +41,30 @@ func init() {
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
+	pflag.Parse()
 	log.Println("配置文件路径", *cfgPath)
 	viper.AddConfigPath(*cfgPath)
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
-		log.Fatalln("读取命令行参数错误,", err.Error())
+		panic(fmt.Errorf("读取命令行参数错误: %w", err))
 	}
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("读取配置错误,", err.Error())
+		panic(fmt.Errorf("读取配置错误: %w", err))
 	}
-
 	if err := viper.Unmarshal(Cfg); err != nil {
-		log.Fatalln("配置解析错误: ", err.Error())
+		panic(fmt.Errorf("配置解析错误: %w", err))
 	}
 }
 
 // NewApp 创建App
 func NewApp() App {
+	Init()
 	a := new(app)
 	if Cfg.Extension.Id == "" || Cfg.Extension.Name == "" {
-		panic("流程扩展服务 id 和 name 不能为空")
+		panic("流程扩展服务id和name不能为空")
 	}
 	Cfg.Log.Syslog.ServiceName = Cfg.Extension.Id
 	logger.InitLogger(Cfg.Log)
-	logger.Debugf("配置=%+v", *Cfg)
+	logger.Infof("启动配置=%+v", *Cfg)
 	a.clean = func() {}
 	if Cfg.Pprof.Enable {
 		go func() {

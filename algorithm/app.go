@@ -3,7 +3,6 @@ package algorithm
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -60,12 +59,11 @@ type app struct {
 	cacheValue sync.Map
 }
 
-func init() {
+func Init() {
 	// 设置随机数种子
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	pflag.String("serviceId", "", "服务id")
 	cfgPath := pflag.String("config", "./etc/", "配置文件")
-	pflag.Parse()
 	viper.SetDefault("log.level", 4)
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("log.output", "stdout")
@@ -78,22 +76,23 @@ func init() {
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
+	pflag.Parse()
 	viper.AddConfigPath(*cfgPath)
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
-		log.Fatalln("读取命令行参数错误,", err.Error())
+		panic(fmt.Errorf("读取命令行参数错误: %w", err))
 	}
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("读取配置错误,", err.Error())
+		panic(fmt.Errorf("读取配置错误: %w", err))
 	}
 	if err := viper.Unmarshal(Cfg); err != nil {
-		log.Fatalln("配置解析错误: ", err.Error())
+		panic(fmt.Errorf("配置解析错误: %w", err))
 	}
 }
 
 // NewApp 创建App
 func NewApp() App {
+	Init()
 	a := new(app)
-
 	if Cfg.Algorithm.ID == "" || Cfg.Algorithm.Name == "" {
 		panic("算法id或name不能为空")
 	}
@@ -111,7 +110,7 @@ func NewApp() App {
 	}
 	Cfg.Log.Syslog.ServiceName = Cfg.ServiceID
 	logger.InitLogger(Cfg.Log)
-	logger.Debugf("配置=%+v", *Cfg)
+	logger.Infof("启动配置=%+v", *Cfg)
 	if Cfg.Pprof.Enable {
 		go func() {
 			//  路径/debug/pprof/
