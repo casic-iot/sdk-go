@@ -554,7 +554,7 @@ func (c *Client) StartStream(ctx context.Context) error {
 				}
 			}
 		}
-		go func(res *pb.StartRequest) {
+		run := func(res *pb.StartRequest) {
 			newCtx, cancel := context.WithTimeout(ctx1, Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			defer func() {
@@ -596,7 +596,8 @@ func (c *Client) StartStream(ctx context.Context) error {
 				errCtx := logger.NewErrorContext(newCtx, err)
 				logger.WithContext(errCtx).Errorf("start: 启动驱动结果返回到驱动管理错误")
 			}
-		}(res)
+		}
+		run(res)
 	}
 }
 
