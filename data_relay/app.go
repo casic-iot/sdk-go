@@ -14,6 +14,7 @@ import (
 	api_client_go "github.com/air-iot/api-client-go/v4"
 	"github.com/air-iot/json"
 	"github.com/air-iot/logger"
+	"github.com/air-iot/sdk-go/v4/conn/mq"
 	"github.com/air-iot/sdk-go/v4/etcd"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -24,6 +25,7 @@ type App interface {
 	Start(ext DataRelay)
 	GetProjectId() string
 	GetAPIClient() *api_client_go.Client
+	GetMQ() mq.MQ
 }
 
 // app 数据采集类
@@ -33,6 +35,7 @@ type app struct {
 	etcdConn  *clientv3.Client
 	apiClient *api_client_go.Client
 	clean     func()
+	mq        mq.MQ
 }
 
 func Init() {
@@ -57,6 +60,20 @@ func Init() {
 	viper.SetDefault("etcd.username", "root")
 	viper.SetDefault("etcd.password", "dell123")
 	viper.SetDefault("etcd.dialTimeout", 60)
+	viper.SetDefault("mq.type", "mqtt")
+	viper.SetDefault("mq.timeout", "60s")
+	viper.SetDefault("mq.mqtt.host", "mqtt")
+	viper.SetDefault("mq.mqtt.port", 1883)
+	viper.SetDefault("mq.mqtt.username", "admin")
+	viper.SetDefault("mq.mqtt.password", "public")
+	viper.SetDefault("mq.mqtt.keepAlive", 60)
+	viper.SetDefault("mq.mqtt.connectTimeout", 20)
+	viper.SetDefault("mq.mqtt.protocolVersion", 4)
+	viper.SetDefault("mq.rabbit.host", "rabbit")
+	viper.SetDefault("mq.rabbit.port", 5672)
+	viper.SetDefault("mq.rabbit.username", "admin")
+	viper.SetDefault("mq.rabbit.password", "public")
+	viper.SetDefault("mq.kafka.brokers", []string{"kafka:9092"})
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
 	viper.SetConfigType("yaml")
@@ -131,8 +148,14 @@ func NewApp() App {
 		panic(err)
 	}
 	a.apiClient = apiCli
+	mqConn, cleanMQ, err := mq.NewMQ(Cfg.MQ)
+	if err != nil {
+		panic(fmt.Errorf("初始化消息队列错误: %w", err))
+	}
+	a.mq = mqConn
 	a.clean = func() {
 		clean()
+		cleanMQ()
 		err := conn.Close()
 		if err != nil {
 			logger.Errorf("关闭etcd: %v", err)
@@ -148,6 +171,10 @@ func (a *app) GetProjectId() string {
 
 func (a *app) GetAPIClient() *api_client_go.Client {
 	return a.apiClient
+}
+
+func (a *app) GetMQ() mq.MQ {
+	return a.mq
 }
 
 // Start 开始服务

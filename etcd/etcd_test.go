@@ -17,7 +17,7 @@ var client *clientv3.Client
 func TestMain(m *testing.M) {
 	var err error
 	client, err = clientv3.New(clientv3.Config{
-		Endpoints:        []string{"121.89.244.23:2379"},
+		Endpoints:        []string{"127.0.0.1:2379"},
 		DialTimeout:      time.Second * 20,
 		DialOptions:      []grpc.DialOption{grpc.WithBlock()},
 		Username:         "root",

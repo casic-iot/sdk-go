@@ -3,6 +3,7 @@ package data_relay
 import (
 	grpcConfig "github.com/air-iot/api-client-go/v4/config"
 	"github.com/air-iot/logger"
+	"github.com/air-iot/sdk-go/v4/conn/mq"
 	"github.com/air-iot/sdk-go/v4/data_relay/grpc"
 	"github.com/air-iot/sdk-go/v4/etcd"
 )
@@ -29,4 +30,5 @@ type Config struct {
 	App        struct {
 		API grpcConfig.Config `json:"api" yaml:"API"`
 	} `json:"app" yaml:"app"`
+	MQ mq.Config `json:"mq" yaml:"mq"`
 }

@@ -6,7 +6,7 @@ log:
   level: 5
 
 dataRelayGrpc:
-  host: localhost
+  host: 127.0.0.1
   port: 9232
   healthRequestTime: 10s
   waitTime: 5s
@@ -17,9 +17,18 @@ project: zq
 etcdConfig: /airiot/config/dev.json
 etcd:
   endpoints:
-    - 121.89.244.23:2379
+    - 127.0.0.1:2379
 
 app:
   api:
     Metadata:
       env: aliyun
+
+mq:
+  type: mqtt
+  mqtt:
+    host: 127.0.0.1
+    port: 1883
+  kafka:
+    brokers:
+      - localhost:9092
