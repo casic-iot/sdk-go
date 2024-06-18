@@ -10,7 +10,7 @@ var Schema = `({
 					"server": {
 						"type": "string",
 						"title": "服务器",
-						"descripption": "MQTT 服务器地址. 例如: tcp://127.0.0.1:1883"
+						"description": "MQTT 服务器地址. 例如: tcp://127.0.0.1:1883"
 					},
 					"username": {
 						"type": "string",
@@ -28,7 +28,7 @@ var Schema = `({
 					"topic": {
 						"type": "string",
 						"title": "主题",
-						"descripption": "接收数据的主题. 例如: /data/#"
+						"description": "接收数据的主题. 例如: /data/#"
 					},
 					"parseScript": {
 						"type": "string",

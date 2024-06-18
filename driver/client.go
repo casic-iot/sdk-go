@@ -245,8 +245,7 @@ func (c *Client) GetCommands(ctx context.Context, table, id string, result inter
 	if id == "" {
 		return fmt.Errorf("设备ID为空")
 	}
-	res, err := c.instructCli.GetCommands(ctx, &pb.RequestCommand{
-		ProjectId:   Cfg.Project,
+	res, err := c.instructCli.GetCommands(apicontext.GetGrpcContext(ctx, map[string]string{config.XRequestProject: Cfg.Project}), &pb.RequestCommand{
 		TableId:     table,
 		TableDataId: id,
 	})
