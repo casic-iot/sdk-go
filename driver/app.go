@@ -43,6 +43,8 @@ type App interface {
 	LogWarn(table, id string, msg interface{})
 	LogError(table, id string, msg interface{})
 	GetProjectId() string
+	GetCommands(ctx context.Context, table, id string, ret interface{}) error
+	UpdateCommand(ctx context.Context, id string, data entity.DriverInstruct) error
 }
 
 const (
@@ -442,6 +444,14 @@ func (a *app) WriteEvent(ctx context.Context, event entity.Event) error {
 
 func (a *app) FindDevice(ctx context.Context, table, id string, ret interface{}) error {
 	return a.cli.FindDevice(ctx, table, id, ret)
+}
+
+func (a *app) GetCommands(ctx context.Context, table, id string, ret interface{}) error {
+	return a.cli.GetCommands(ctx, table, id, ret)
+}
+
+func (a *app) UpdateCommand(ctx context.Context, id string, data entity.DriverInstruct) error {
+	return a.cli.UpdateCommand(ctx, id, data)
 }
 
 func (a *app) RunLog(ctx context.Context, l entity.Log) error {

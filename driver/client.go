@@ -8,12 +8,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/air-iot/api-client-go/v4/apicontext"
+	"github.com/air-iot/api-client-go/v4/config"
 	"github.com/air-iot/errors"
 	"github.com/air-iot/json"
 	"github.com/air-iot/sdk-go/v4/driver/entity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	api "github.com/air-iot/api-client-go/v4/api"
 	pb "github.com/air-iot/api-client-go/v4/driver"
 	"github.com/air-iot/logger"
 	dGrpc "github.com/air-iot/sdk-go/v4/driver/grpc"
@@ -24,6 +27,7 @@ type Client struct {
 
 	conn           *grpc.ClientConn
 	cli            pb.DriverServiceClient
+	instructCli    pb.DriverInstructServiceClient
 	app            App
 	driver         Driver
 	clean          func()
@@ -119,6 +123,7 @@ func (c *Client) connDriver(ctx context.Context) error {
 	}
 	c.conn = conn
 	c.cli = pb.NewDriverServiceClient(conn)
+	c.instructCli = pb.NewDriverInstructServiceClient(conn)
 	return nil
 }
 
@@ -230,6 +235,53 @@ func (c *Client) FindDevice(ctx context.Context, table, id string, ret interface
 	if err := json.Unmarshal(res.GetResult(), ret); err != nil {
 		return fmt.Errorf("解析请求结果错误: %v", err)
 	}
+	return nil
+}
+
+func (c *Client) GetCommands(ctx context.Context, table, id string, result interface{}) error {
+	if table == "" {
+		return fmt.Errorf("表ID为空")
+	}
+	if id == "" {
+		return fmt.Errorf("设备ID为空")
+	}
+	res, err := c.instructCli.GetCommands(ctx, &pb.RequestCommand{
+		ProjectId:   Cfg.Project,
+		TableId:     table,
+		TableDataId: id,
+	})
+	if err != nil {
+		return err
+	}
+	if !res.GetStatus() {
+		return fmt.Errorf(res.GetInfo())
+	}
+	if err := json.Unmarshal(res.GetResult(), result); err != nil {
+		return fmt.Errorf("解析请求结果错误: %v", err)
+	}
+	return nil
+}
+
+func (c *Client) UpdateCommand(ctx context.Context, id string, data entity.DriverInstruct) error {
+	if id == "" {
+		return fmt.Errorf("ID为空")
+	}
+	marshalB, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("数据错误: %v", err)
+	}
+	res, err := c.instructCli.Update(
+		apicontext.GetGrpcContext(ctx, map[string]string{config.XRequestProject: Cfg.Project}), &api.UpdateRequest{
+			Id:   id,
+			Data: marshalB,
+		})
+	if err != nil {
+		return err
+	}
+	if !res.GetStatus() {
+		return fmt.Errorf(res.GetInfo())
+	}
+
 	return nil
 }
 

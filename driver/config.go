@@ -4,6 +4,7 @@ import (
 	"github.com/air-iot/logger"
 	"github.com/air-iot/sdk-go/v4/conn/mq"
 	"github.com/air-iot/sdk-go/v4/driver/grpc"
+	"github.com/air-iot/sdk-go/v4/etcd"
 )
 
 // Cfg 全局配置(需要先执行MustLoad，否则拿不到配置)
@@ -25,4 +26,6 @@ type Config struct {
 		Host   string `json:"host" yaml:"host"`
 		Port   string `json:"port" yaml:"port"`
 	} `json:"pprof" yaml:"pprof"`
+	EtcdConfig string      `json:"etcdConfig" yaml:"etcdConfig"`
+	Etcd       etcd.Config `json:"etcd" yaml:"etcd"`
 }

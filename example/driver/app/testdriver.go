@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
-
 	"github.com/air-iot/json"
 	"github.com/air-iot/logger"
 	"github.com/air-iot/sdk-go/v4/driver"
@@ -13,6 +11,7 @@ import (
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	"net/http"
 )
 
 // 驱动配置信息，不同的驱动生成不同的配置信息
@@ -177,13 +176,18 @@ func (p *TestDriver) Schema(ctx context.Context, _ driver.App) (string, error) {
 }
 
 // Run 执行指令，实现Driver的Run函数
-func (p *TestDriver) Run(ctx context.Context, _ driver.App, cmd *entity.Command) (interface{}, error) {
+func (p *TestDriver) Run(ctx context.Context, app driver.App, cmd *entity.Command) (interface{}, error) {
 	logger.Debugln("执行指令", *cmd)
 	var c map[string]interface{}
 	err := json.Unmarshal(cmd.Command, &c)
 	if err != nil {
 		return nil, err
 	}
+	//go func() {
+	//	time.Sleep(5 * time.Second)
+
+	//	logger.Debugf("指令查询： %+v", arr)
+	//}()
 	result, err := p.commandHandler(goja.Undefined(), p.commandVm.ToValue(cmd.Table), p.commandVm.ToValue(cmd.Id), p.commandVm.ToValue(c))
 	if err != nil {
 		return nil, err
@@ -227,8 +231,23 @@ func (p *TestDriver) Stop(ctx context.Context, _ driver.App) error {
 	return nil
 }
 
-func (p *TestDriver) HttpProxy(ctx context.Context, _ driver.App, t string, header http.Header, data []byte) (interface{}, error) {
+func (p *TestDriver) HttpProxy(ctx context.Context, a driver.App, t string, header http.Header, data []byte) (interface{}, error) {
 	logger.Debugln("Http代理", t, header, string(data))
+
+	var arr []Command
+	if err := a.GetCommands(ctx, "gosdk", "gosdk1", &arr); err != nil {
+		logger.Errorf("指令查询错误: %v", err)
+	}
+	logger.Debugf("查询指令：%+v", arr)
+	for _, v := range arr {
+		err := a.UpdateCommand(ctx, v.ID, entity.DriverInstruct{
+			Status:    entity.COMMAND_STATUS_SUCCESS,
+			RunResult: map[string]interface{}{"a": 1},
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	return Schema, nil
 }
 
@@ -309,4 +328,8 @@ func (p *TestDriver) handler(a driver.App, ctx context.Context, driverConfig Dri
 		}
 	})
 	return nil
+}
+
+type Command struct {
+	ID string `json:"id"`
 }
