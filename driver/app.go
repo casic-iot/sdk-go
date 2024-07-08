@@ -333,6 +333,8 @@ func (a *app) writePoints(ctx context.Context, tableId string, p entity.Point) e
 	}
 	if p.UnixTime == 0 {
 		p.UnixTime = time.Now().Local().UnixMilli()
+	} else if p.UnixTime > 9999999999999 || p.UnixTime < 1000000000000 {
+		return fmt.Errorf("时间无效")
 	}
 	b, err := json.Marshal(&entity.WritePoint{ID: p.ID, CID: p.CID, Source: "device", UnixTime: p.UnixTime, Fields: fields, FieldTypes: p.FieldTypes})
 	if err != nil {
