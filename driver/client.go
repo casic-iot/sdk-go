@@ -37,6 +37,7 @@ type Client struct {
 }
 
 const totalStream = 7
+const STREAM_HEARTBEAT = "heartbeat"
 
 func (c *Client) Start(app App, driver Driver) *Client {
 	c.app = app
@@ -492,7 +493,10 @@ func (c *Client) SchemaStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -501,12 +505,52 @@ func (c *Client) SchemaStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("schema: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("schema stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("schema stream心跳开始")
+				if err := stream.Send(&pb.SchemaResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("schema stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("schema stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("schema stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("schema stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("schema stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("schema stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.SchemaRequest) {
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("schema stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			newCtx = logger.NewModuleContext(newCtx, entity.MODULE_SCHEMA)
@@ -540,7 +584,10 @@ func (c *Client) StartStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -549,10 +596,50 @@ func (c *Client) StartStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("start: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("start stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("start stream心跳开始")
+				if err := stream.Send(&pb.StartResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("start stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("start stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("start stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("start stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("start stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("start stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
+		}
+		if res.GetRequest() == STREAM_HEARTBEAT {
+			//logger.WithContext(hCtx).Debugf("start stream收到心跳响应包输入到管道")
+			ch <- struct{}{}
+			continue
 		}
 		ctx1 := logger.NewModuleContext(context.Background(), entity.MODULE_START)
 		logger.WithContext(ctx1).Debugf("start: 接收到开始请求")
@@ -657,7 +744,10 @@ func (c *Client) RunStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -666,12 +756,52 @@ func (c *Client) RunStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("执行指令: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("执行指令stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("执行指令stream心跳开始")
+				if err := stream.Send(&pb.RunResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("执行指令stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("执行指令stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("执行指令stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("执行指令stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("执行指令stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("执行指令stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.RunRequest) {
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("执行指令stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			newCtx = logger.NewTDMContext(newCtx, res.TableId, res.Id, entity.MODULE_RUN)
@@ -734,7 +864,10 @@ func (c *Client) WriteTagStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -743,12 +876,52 @@ func (c *Client) WriteTagStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("写数据点: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("写数据点stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("写数据点stream心跳开始")
+				if err := stream.Send(&pb.RunResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("写数据点stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("写数据点stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("写数据点stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("写数据点stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("写数据点stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("写数据点stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.RunRequest) {
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("写数据点stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			newCtx = logger.NewTDMContext(newCtx, res.TableId, res.Id, entity.MODULE_WRITETAG)
@@ -811,7 +984,10 @@ func (c *Client) BatchRunStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -820,12 +996,52 @@ func (c *Client) BatchRunStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("批量执行指令: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("批量执行指令stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("批量执行指令stream心跳开始")
+				if err := stream.Send(&pb.BatchRunResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("批量执行指令stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("批量执行指令stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("批量执行指令stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("批量执行指令stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("批量执行指令stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("批量执行指令stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.BatchRunRequest) {
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("批量执行指令stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			newCtx = logger.NewModuleContext(newCtx, entity.MODULE_BATCHRUN)
@@ -889,7 +1105,10 @@ func (c *Client) DebugStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -898,13 +1117,53 @@ func (c *Client) DebugStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("调试: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("调试stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("调试stream心跳开始")
+				if err := stream.Send(&pb.Debug{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("调试stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("调试stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("调试stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("调试stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("调试stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("调试stream收到心跳响应")
+				}
+
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.Debug) {
-
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("调试stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()
 			newCtx = logger.NewModuleContext(newCtx, entity.MODULE_DEBUG)
@@ -962,7 +1221,10 @@ func (c *Client) HttpProxyStream(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	hCtx, hCancel := context.WithCancel(ctx)
+	ch := make(chan struct{}, 1)
 	defer func() {
+		hCancel()
 		atomic.AddInt32(&c.streamCount, -1)
 		if err := stream.CloseSend(); err != nil {
 			errCtx := logger.NewErrorContext(ctx, err)
@@ -971,12 +1233,52 @@ func (c *Client) HttpProxyStream(ctx context.Context) error {
 	}()
 	logger.WithContext(ctx).Infof("httpProxy: stream连接成功")
 	atomic.AddInt32(&c.streamCount, 1)
+	go func() {
+		for {
+			select {
+			case <-hCtx.Done():
+				logger.WithContext(hCtx).Infof("httpProxy stream心跳停止")
+				return
+			default:
+				time.Sleep(Cfg.DriverGrpc.Stream.Heartbeat)
+				logger.WithContext(hCtx).Debugf("httpProxy stream心跳开始")
+				if err := stream.Send(&pb.HttpProxyResult{
+					Request: STREAM_HEARTBEAT,
+				}); err != nil {
+					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("httpProxy stream心跳发送错误")
+					if err := stream.CloseSend(); err != nil {
+						errCtx := logger.NewErrorContext(ctx, err)
+						logger.WithContext(errCtx).Errorf("httpProxy stream心跳发送错误: 关闭stream错误")
+					}
+					return
+				}
+				select {
+				case <-hCtx.Done():
+					logger.WithContext(hCtx).Infof("httpProxy stream心跳停止")
+					return
+				case <-time.After(Cfg.DriverGrpc.Stream.Heartbeat * 3):
+					logger.WithContext(hCtx).Errorf("httpProxy stream心跳超时")
+					if err := stream.CloseSend(); err != nil {
+						logger.WithContext(hCtx).Errorf("httpProxy stream心跳超时: 关闭stream错误")
+					}
+					return
+				case <-ch:
+					logger.WithContext(hCtx).Debugf("httpProxy stream收到心跳响应")
+				}
+			}
+		}
+	}()
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		go func(res *pb.HttpProxyRequest) {
+			if res.GetRequest() == STREAM_HEARTBEAT {
+				//logger.WithContext(hCtx).Debugf("httpProxy stream收到心跳响应包输入到管道")
+				ch <- struct{}{}
+				return
+			}
 			var header http.Header
 			newCtx, cancel := context.WithTimeout(context.Background(), Cfg.DriverGrpc.Timeout)
 			defer cancel()

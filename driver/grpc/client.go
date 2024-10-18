@@ -15,6 +15,9 @@ type Config struct {
 		RequestTime time.Duration `json:"requestTime" yaml:"requestTime"`
 		Retry       int           `json:"retry" yaml:"retry"`
 	} `json:"health" yaml:"health"`
+	Stream struct {
+		Heartbeat time.Duration `json:"heartbeat" yaml:"heartbeat"`
+	} `json:"stream" yaml:"stream"`
 	WaitTime time.Duration `json:"waitTime" yaml:"waitTime"`
 	Timeout  time.Duration `json:"timeout" yaml:"timeout"`
 	Limit    int           `json:"limit" yaml:"limit"`
