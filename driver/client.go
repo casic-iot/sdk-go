@@ -13,6 +13,7 @@ import (
 	"github.com/air-iot/errors"
 	"github.com/air-iot/json"
 	"github.com/air-iot/sdk-go/v4/driver/entity"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -92,7 +93,8 @@ func (c *Client) run(ctx context.Context) error {
 	defer c.close(ctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c.startSteam(ctx)
+	sessionId := primitive.NewObjectID().Hex()
+	c.startSteam(ctx, sessionId)
 	c.healthCheck(ctx)
 	return nil
 }
@@ -103,6 +105,8 @@ func (c *Client) close(ctx context.Context) {
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
 			logger.WithContext(ctx).Errorf("关闭grpc连接. %v", err)
+		} else {
+			c.conn = nil
 		}
 	}
 }
@@ -113,8 +117,7 @@ func (c *Client) connDriver(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, Cfg.DriverGrpc.Timeout)
 	defer cancel()
 	logger.WithContext(ctx).Infof("连接driver: 配置=%+v", Cfg.DriverGrpc)
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", Cfg.DriverGrpc.Host, Cfg.DriverGrpc.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(Cfg.DriverGrpc.Limit*1024*1024), grpc.MaxCallSendMsgSize(Cfg.DriverGrpc.Limit*1024*1024)),
@@ -160,6 +163,9 @@ func (c *Client) healthCheck(ctx context.Context) {
 						if healthRes.Errors != nil && len(healthRes.Errors) > 0 {
 							for _, e := range healthRes.Errors {
 								newLogger.Errorf("健康检查: code=%s,错误=%s", e.Code.String(), e.Message)
+								if e.Code == pb.Error_Start {
+									state = true
+								}
 							}
 						}
 					} else if healthRes.GetStatus() == pb.HealthCheckResponse_SERVICE_UNKNOWN {
@@ -330,7 +336,7 @@ func (c *Client) UpdateTableData(ctx context.Context, l entity.TableData, result
 	return nil
 }
 
-func (c *Client) startSteam(ctx context.Context) {
+func (c *Client) startSteam(ctx context.Context, sessionId string) {
 	go func() {
 		for {
 			select {
@@ -345,7 +351,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_SCHEMA)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("schema: 启动stream")
-				if err := c.SchemaStream(newCtx); err != nil {
+				if err := c.SchemaStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("schema: stream创建错误")
 				}
@@ -367,7 +373,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_START)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("start: 启动stream")
-				if err := c.StartStream(newCtx); err != nil {
+				if err := c.StartStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("start: stream创建错误")
 				}
@@ -389,7 +395,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_RUN)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("执行指令: 启动stream")
-				if err := c.RunStream(newCtx); err != nil {
+				if err := c.RunStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("执行指令: stream创建错误")
 				}
@@ -411,7 +417,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_WRITETAG)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("写数据点: 启动stream")
-				if err := c.WriteTagStream(newCtx); err != nil {
+				if err := c.WriteTagStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("写数据点: stream创建错误")
 				}
@@ -433,7 +439,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_BATCHRUN)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("批量执行指令: 启动stream")
-				if err := c.BatchRunStream(newCtx); err != nil {
+				if err := c.BatchRunStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("批量执行指令: stream创建错误")
 				}
@@ -455,7 +461,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_DEBUG)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("调试: 启动stream")
-				if err := c.DebugStream(newCtx); err != nil {
+				if err := c.DebugStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("调试: stream创建错误")
 				}
@@ -478,7 +484,7 @@ func (c *Client) startSteam(ctx context.Context) {
 				newCtx = logger.NewModuleContext(newCtx, entity.MODULE_HTTPPROXY)
 				newLogger := logger.WithContext(newCtx)
 				newLogger.Infof("httpProxy: 启动stream")
-				if err := c.HttpProxyStream(newCtx); err != nil {
+				if err := c.HttpProxyStream(newCtx, sessionId); err != nil {
 					errCtx := logger.NewErrorContext(newCtx, err)
 					logger.WithContext(errCtx).Errorf("httpProxy: stream创建错误")
 				}
@@ -488,8 +494,8 @@ func (c *Client) startSteam(ctx context.Context) {
 	}()
 }
 
-func (c *Client) SchemaStream(ctx context.Context) error {
-	stream, err := c.cli.SchemaStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) SchemaStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.SchemaStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -518,10 +524,11 @@ func (c *Client) SchemaStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("schema stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("schema stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("schema stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -558,7 +565,7 @@ func (c *Client) SchemaStream(ctx context.Context) error {
 				newCtx = logger.NewGroupContext(newCtx, Cfg.GroupID)
 			}
 			logger.WithContext(newCtx).Debugf("schema: 接收到查询请求")
-			schema, err := c.driver.Schema(newCtx, c.app)
+			schema, err := c.driver.Schema(newCtx, c.app, res.GetLocale())
 			schemaRes := new(entity.GrpcResult)
 			if err != nil {
 				schemaRes.Error = err.Error()
@@ -579,8 +586,8 @@ func (c *Client) SchemaStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) StartStream(ctx context.Context) error {
-	stream, err := c.cli.StartStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) StartStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.StartStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -609,10 +616,11 @@ func (c *Client) StartStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("start stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("start stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("start stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -739,8 +747,8 @@ func (c *Client) StartStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) RunStream(ctx context.Context) error {
-	stream, err := c.cli.RunStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) RunStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.RunStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -769,10 +777,11 @@ func (c *Client) RunStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("执行指令stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("执行指令stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("执行指令stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -859,8 +868,8 @@ func (c *Client) RunStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) WriteTagStream(ctx context.Context) error {
-	stream, err := c.cli.WriteTagStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) WriteTagStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.WriteTagStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -889,10 +898,11 @@ func (c *Client) WriteTagStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("写数据点stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("写数据点stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("写数据点stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -979,8 +989,8 @@ func (c *Client) WriteTagStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) BatchRunStream(ctx context.Context) error {
-	stream, err := c.cli.BatchRunStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) BatchRunStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.BatchRunStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -1009,10 +1019,11 @@ func (c *Client) BatchRunStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("批量执行指令stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("批量执行指令stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("批量执行指令stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -1100,8 +1111,8 @@ func (c *Client) BatchRunStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) DebugStream(ctx context.Context) error {
-	stream, err := c.cli.DebugStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) DebugStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.DebugStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -1130,10 +1141,11 @@ func (c *Client) DebugStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("调试stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("调试stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("调试stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {
@@ -1216,8 +1228,8 @@ func (c *Client) DebugStream(ctx context.Context) error {
 	}
 }
 
-func (c *Client) HttpProxyStream(ctx context.Context) error {
-	stream, err := c.cli.HttpProxyStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name))
+func (c *Client) HttpProxyStream(ctx context.Context, sessionId string) error {
+	stream, err := c.cli.HttpProxyStream(dGrpc.GetGrpcContext(ctx, Cfg.ServiceID, Cfg.Project, Cfg.Driver.ID, Cfg.Driver.Name, sessionId))
 	if err != nil {
 		return err
 	}
@@ -1246,10 +1258,11 @@ func (c *Client) HttpProxyStream(ctx context.Context) error {
 					Request: STREAM_HEARTBEAT,
 				}); err != nil {
 					logger.WithContext(logger.NewErrorContext(hCtx, err)).Errorf("httpProxy stream心跳发送错误")
-					if err := stream.CloseSend(); err != nil {
-						errCtx := logger.NewErrorContext(ctx, err)
-						logger.WithContext(errCtx).Errorf("httpProxy stream心跳发送错误: 关闭stream错误")
-					}
+					//if err := stream.CloseSend(); err != nil {
+					//	errCtx := logger.NewErrorContext(ctx, err)
+					//	logger.WithContext(errCtx).Errorf("httpProxy stream心跳发送错误: 关闭stream错误")
+					//}
+					c.close(ctx)
 					return
 				}
 				select {

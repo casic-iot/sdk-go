@@ -10,8 +10,9 @@ import (
 type Driver interface {
 	// Schema
 	// @description 查询返回驱动配置schema内容
+	// @param locale 国际化语言 zh
 	// @return schema "驱动配置schema"
-	Schema(ctx context.Context, app App) (schema string, err error)
+	Schema(ctx context.Context, app App, locale string) (schema string, err error)
 
 	// Start
 	// @description 驱动启动

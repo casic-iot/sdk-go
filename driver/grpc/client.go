@@ -23,12 +23,14 @@ type Config struct {
 	Limit    int           `json:"limit" yaml:"limit"`
 }
 
-func GetGrpcContext(ctx context.Context, serviceId, projectId, driverId, driverName string) context.Context {
+func GetGrpcContext(ctx context.Context, serviceId, projectId, driverId, driverName, sessionId string) context.Context {
 	md := metadata.New(map[string]string{
 		"serviceId":  hex.EncodeToString([]byte(serviceId)),
 		"projectId":  hex.EncodeToString([]byte(projectId)),
 		"driverId":   hex.EncodeToString([]byte(driverId)),
-		"driverName": hex.EncodeToString([]byte(driverName))})
+		"driverName": hex.EncodeToString([]byte(driverName)),
+		"sessionId":  hex.EncodeToString([]byte(sessionId)),
+	})
 	// 发送 metadata
 	// 创建带有meta的context
 	return metadata.NewOutgoingContext(ctx, md)

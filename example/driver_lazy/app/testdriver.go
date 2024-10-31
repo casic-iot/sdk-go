@@ -146,7 +146,7 @@ func (p *TestDriver) Start(ctx context.Context, a driver.App, bts []byte) error 
 	return nil
 }
 
-func (p *TestDriver) Schema(ctx context.Context, _ driver.App) (string, error) {
+func (p *TestDriver) Schema(ctx context.Context, _ driver.App, locale string) (string, error) {
 	return Schema, nil
 }
 
