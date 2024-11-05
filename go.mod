@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/IBM/sarama v1.42.1
-	github.com/air-iot/api-client-go/v4 v4.7.21
+	github.com/air-iot/api-client-go/v4 v4.7.22
 	github.com/air-iot/errors v0.0.7
 	github.com/air-iot/json v0.0.3
 	github.com/air-iot/logger v1.0.14

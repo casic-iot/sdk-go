@@ -24,9 +24,9 @@ type App interface {
 
 type Service interface {
 	// Schema
-	// @description 查询schema
+	// @description 查询schema, 适配多语言
 	// @return result "算法配置schema,返回字符串"
-	Schema(context.Context, App) (result string, err error)
+	Schema(context.Context, App, string) (result string, err error)
 
 	// Start
 	// @description 启动算法服务

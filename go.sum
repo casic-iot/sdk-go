@@ -6,6 +6,7 @@ github.com/IBM/sarama v1.42.1 h1:wugyWa15TDEHh2kvq2gAy1IHLjEjuYOYgXz/ruC/OSQ=
 github.com/IBM/sarama v1.42.1/go.mod h1:Xxho9HkHd4K/MDUo/T/sOqwtX/17D33++E9Wib6hUdQ=
 github.com/air-iot/api-client-go/v4 v4.7.21 h1:0/rGdPSl1pYRduStcsna6UZI4pZx6R1u1Hu3teJF10U=
 github.com/air-iot/api-client-go/v4 v4.7.21/go.mod h1:9rCaTOuXv7m+sTXlEuPG3ZN5ZGN9u6+CEr5zlGuxmto=
+github.com/air-iot/api-client-go/v4 v4.7.22/go.mod h1:9rCaTOuXv7m+sTXlEuPG3ZN5ZGN9u6+CEr5zlGuxmto=
 github.com/air-iot/errors v0.0.7 h1:MTz7yuH1nGfZS5Pv3+D1RjJ6wJvBqmhsO1eVuXYlYAI=
 github.com/air-iot/errors v0.0.7/go.mod h1:Q6QsiIN5OX0Y+a8b/hQzxROy8LGbYEq0MKb0EKH9JVk=
 github.com/air-iot/json v0.0.3 h1:Tfwl197VrgBI1/mRvcp4YvSaIWmqR4uILXaqIwE9kGY=

@@ -30,7 +30,7 @@ func (p *TestAlgorithm) Stop(_ context.Context, _ algorithm.App) error {
 	return nil
 }
 
-func (p *TestAlgorithm) Schema(_ context.Context, _ algorithm.App) (string, error) {
+func (p *TestAlgorithm) Schema(_ context.Context, _ algorithm.App, lang string) (string, error) {
 	return Schema, nil
 }
 
