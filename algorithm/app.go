@@ -71,6 +71,7 @@ func Init() {
 	viper.SetDefault("algorithmGrpc.port", 9236)
 	viper.SetDefault("algorithmGrpc.health.requestTime", 10)
 	viper.SetDefault("algorithmGrpc.waitTime", 5)
+	viper.SetDefault("algorithmGrpc.limit", 100)
 	viper.SetDefault("algorithm.timeout", 600)
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()

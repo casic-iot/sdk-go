@@ -35,6 +35,7 @@ type GrpcConfig struct {
 		Retry       int `json:"retry" yaml:"retry"`
 	} `json:"health" yaml:"health"`
 	WaitTime int `json:"waitTime" yaml:"waitTime"`
+	Limit    int `json:"limit" yaml:"limit"`
 }
 
 func GetGrpcContext(ctx context.Context, serviceId, id, name string) context.Context {

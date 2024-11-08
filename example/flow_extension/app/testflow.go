@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 	"encoding/json"
-	flowextionsion "github.com/air-iot/sdk-go/v4/flow_extension"
 
 	"github.com/air-iot/logger"
+	flowextionsion "github.com/air-iot/sdk-go/v4/flow_extension"
 )
 
 // TestFlow 定义测试驱动结构体
@@ -19,8 +19,8 @@ type Input struct {
 	Num2 int `json:"num2"`
 }
 
-func (p *TestFlow) Schema(ctx context.Context, a flowextionsion.App) (string, error) {
-	logger.Infof("查询schema")
+func (p *TestFlow) Schema(ctx context.Context, a flowextionsion.App, locale string) (string, error) {
+	logger.Infof("查询schema: %s", locale)
 	return schema, nil
 }
 

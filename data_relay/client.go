@@ -100,8 +100,7 @@ func (c *Client) connDriver(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, Cfg.DataRelayGrpc.Timeout)
 	defer cancel()
 	logger.WithContext(ctx).Infof("连接数据中转服务: 配置=%+v", Cfg.DataRelayGrpc)
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", Cfg.DataRelayGrpc.Host, Cfg.DataRelayGrpc.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(Cfg.DataRelayGrpc.Limit*1024*1024), grpc.MaxCallSendMsgSize(Cfg.DataRelayGrpc.Limit*1024*1024)),

@@ -27,8 +27,9 @@ type Config struct {
 }
 
 type Grpc struct {
-	Host string `json:"host" yaml:"host"`
-	Port int    `json:"port" yaml:"port"`
+	Host  string `json:"host" yaml:"host"`
+	Port  int    `json:"port" yaml:"port"`
+	Limit int    `json:"limit" yaml:"limit"`
 }
 
 func GetGrpcContext(ctx context.Context, id, name string) context.Context {

@@ -14,8 +14,9 @@ type Request struct {
 type Extension interface {
 	// Schema
 	// @description 查询schema
+	// @param locale 国际化
 	// @return schema "驱动配置schema"
-	Schema(ctx context.Context, app App) (schema string, err error)
+	Schema(ctx context.Context, app App, locale string) (schema string, err error)
 
 	// Run
 	// @description 执行算法服务

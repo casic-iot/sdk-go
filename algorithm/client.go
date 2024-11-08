@@ -69,10 +69,11 @@ func (c *Client) restart() {
 
 func (c *Client) connAlgorithm() error {
 	logger.Infof("连接算法管理: 配置=%+v", Cfg.AlgorithmGrpc)
-	conn, err := grpc.DialContext(
-		context.Background(),
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", Cfg.AlgorithmGrpc.Host, Cfg.AlgorithmGrpc.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(Cfg.AlgorithmGrpc.Limit*1024*1024), grpc.MaxCallSendMsgSize(Cfg.AlgorithmGrpc.Limit*1024*1024)),
+	)
 	if err != nil {
 		return fmt.Errorf("grpc.Dial error: %s", err)
 	}

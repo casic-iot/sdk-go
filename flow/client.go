@@ -47,10 +47,11 @@ func (c *Client) Start(app App, flow Flow) *Client {
 
 func (c *Client) connFlow() error {
 	logger.Infof("连接流程引擎: 配置=%+v", Cfg.FlowEngine)
-	conn, err := grpc.DialContext(
-		context.Background(),
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", Cfg.FlowEngine.Host, Cfg.FlowEngine.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(Cfg.FlowEngine.Limit*1024*1024), grpc.MaxCallSendMsgSize(Cfg.FlowEngine.Limit*1024*1024)),
+	)
 	if err != nil {
 		return fmt.Errorf("grpc.Dial error: %s", err)
 	}

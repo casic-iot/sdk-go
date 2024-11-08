@@ -48,10 +48,11 @@ func (c *Client) Start(app App, extension Extension) *Client {
 
 func (c *Client) connFlow() error {
 	logger.Infof("连接flow: 配置=%+v", Cfg.FlowEngine)
-	conn, err := grpc.DialContext(
-		context.Background(),
+	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", Cfg.FlowEngine.Host, Cfg.FlowEngine.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(Cfg.FlowEngine.Limit*1024*1024), grpc.MaxCallSendMsgSize(Cfg.FlowEngine.Limit*1024*1024)),
+	)
 	if err != nil {
 		return fmt.Errorf("grpc.Dial error: %s", err)
 	}
@@ -212,7 +213,7 @@ func (c *Client) Schema(ctx context.Context) error {
 					}
 				}
 			}()
-			result, err := c.extension.Schema(ctx1, c.app)
+			result, err := c.extension.Schema(ctx1, c.app, res.GetLocale())
 			gr := &pb.ExtensionResult{
 				Request: res.GetRequest(),
 			}
