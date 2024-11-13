@@ -93,7 +93,7 @@ func Init() {
 	viper.SetDefault("driverGrpc.port", 9224)
 	viper.SetDefault("driverGrpc.health.requestTime", "10s")
 	viper.SetDefault("driverGrpc.health.retry", 3)
-	viper.SetDefault("driverGrpc.stream.heartbeat", "10s")
+	viper.SetDefault("driverGrpc.stream.heartbeat", "30s")
 	viper.SetDefault("driverGrpc.waitTime", "5s")
 	viper.SetDefault("driverGrpc.timeout", "600s")
 	viper.SetDefault("driverGrpc.limit", 100)
