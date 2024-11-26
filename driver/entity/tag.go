@@ -40,6 +40,7 @@ const (
 )
 
 type Range struct {
+	Enable        *bool            `json:"enable"`
 	Method        RangeMethod      `json:"method"`
 	MinValue      *float64         `json:"minValue"`
 	MaxValue      *float64         `json:"maxValue"`

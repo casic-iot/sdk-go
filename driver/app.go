@@ -293,40 +293,45 @@ func (a *app) writePoints(ctx context.Context, tableId string, p entity.Point) e
 			continue
 		}
 		val := convert.Value(&tag, value)
-		cacheKey := fmt.Sprintf("%s__%s__%s", tableId, p.ID, tag.ID)
-		preValF, ok := a.cacheValue.Load(cacheKey)
-		var preVal *decimal.Decimal
-		if ok {
-			preF, ok := preValF.(*float64)
-			if ok && preF != nil {
-				preValue := decimal.NewFromFloat(*preF)
-				preVal = &preValue
-			}
-		}
-		newVal, rawVal, invalidType, save := convert.Range(tag.Range, preVal, &val)
-		if newVal != nil {
-			valTmp, err := numberx.GetValueByType("", newVal)
-			if err != nil {
-				errCtx := logger.NewErrorContext(ctx, err)
-				logger.WithContext(errCtx).Errorf("存数据点: 设备表=%s,设备=%s,数据点=%s. 设备数据点转类型失败", tableId, p.ID, tag.ID)
-			} else {
-				fields[tag.ID] = valTmp
-				if save {
-					a.cacheValue.Store(cacheKey, newVal)
+		if tag.Range != nil && (tag.Range.Enable == nil || *(tag.Range.Enable)) {
+			cacheKey := fmt.Sprintf("%s__%s__%s", tableId, p.ID, tag.ID)
+			preValF, ok := a.cacheValue.Load(cacheKey)
+			var preVal *decimal.Decimal
+			if ok {
+				preF, ok := preValF.(*float64)
+				if ok && preF != nil {
+					preValue := decimal.NewFromFloat(*preF)
+					preVal = &preValue
 				}
 			}
-		}
-		if rawVal != nil {
-			valTmp, err := numberx.GetValueByType("", rawVal)
-			if err != nil {
-				errCtx := logger.NewErrorContext(ctx, err)
-				logger.WithContext(errCtx).Errorf("存数据点: 设备表=%s,设备=%s,数据点=%s. 设备原始数据点转类型失败", tableId, p.ID, tag.ID)
-			} else {
-				fields[fmt.Sprintf("%s__invalid", tag.ID)] = valTmp
+			newVal, rawVal, invalidType, save := convert.Range(tag.Range, preVal, &val)
+			if newVal != nil {
+				valTmp, err := numberx.GetValueByType("", newVal)
+				if err != nil {
+					errCtx := logger.NewErrorContext(ctx, err)
+					logger.WithContext(errCtx).Errorf("存数据点: 设备表=%s,设备=%s,数据点=%s. 设备数据点转类型失败", tableId, p.ID, tag.ID)
+				} else {
+					fields[tag.ID] = valTmp
+					if save {
+						a.cacheValue.Store(cacheKey, newVal)
+					}
+				}
 			}
-		}
-		if invalidType != "" {
-			fields[fmt.Sprintf("%s__invalid__type", tag.ID)] = invalidType
+			if rawVal != nil {
+				valTmp, err := numberx.GetValueByType("", rawVal)
+				if err != nil {
+					errCtx := logger.NewErrorContext(ctx, err)
+					logger.WithContext(errCtx).Errorf("存数据点: 设备表=%s,设备=%s,数据点=%s. 设备原始数据点转类型失败", tableId, p.ID, tag.ID)
+				} else {
+					fields[fmt.Sprintf("%s__invalid", tag.ID)] = valTmp
+				}
+			}
+			if invalidType != "" {
+				fields[fmt.Sprintf("%s__invalid__type", tag.ID)] = invalidType
+			}
+		} else {
+			vTmp, _ := val.Float64()
+			fields[tag.ID] = vTmp
 		}
 	}
 	if len(fields) == 0 {
