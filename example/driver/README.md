@@ -1,6 +1,6 @@
-# sdk-node-demo
+# sdk-go-demo
 
-node 开发包例子
+驱动开发包例子
 
 ## 测试数据
 
