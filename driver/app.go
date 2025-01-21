@@ -31,7 +31,12 @@ import (
 
 type App interface {
 	Start(Driver)
+	GetProjectId() string
+	GetGroupID() string
+	GetServiceId() string
+	GetMQ() mq.MQ
 	WritePoints(context.Context, entity.Point) error
+	SavePoints(ctx context.Context, tableId string, data *entity.WritePoint) error
 	WriteEvent(context.Context, entity.Event) error
 	WriteWarning(context.Context, entity.Warn) error
 	WriteWarningRecovery(ctx context.Context, tableId, dataId string, w entity.WarnRecovery) error
@@ -42,7 +47,6 @@ type App interface {
 	LogInfo(table, id string, msg interface{})
 	LogWarn(table, id string, msg interface{})
 	LogError(table, id string, msg interface{})
-	GetProjectId() string
 	GetCommands(ctx context.Context, table, id string, ret interface{}) error
 	UpdateCommand(ctx context.Context, id string, data entity.DriverInstruct) error
 }
@@ -182,6 +186,18 @@ func (a *app) stop() {
 
 func (a *app) GetProjectId() string {
 	return Cfg.Project
+}
+
+func (a *app) GetGroupID() string {
+	return Cfg.GroupID
+}
+
+func (a *app) GetServiceId() string {
+	return Cfg.ServiceID
+}
+
+func (a *app) GetMQ() mq.MQ {
+	return a.mq
 }
 
 // WritePoints 写数据点数据
@@ -342,15 +358,41 @@ func (a *app) writePoints(ctx context.Context, tableId string, p entity.Point) e
 	} else if p.UnixTime > 9999999999999 || p.UnixTime < 1000000000000 {
 		return fmt.Errorf("时间无效")
 	}
-	b, err := json.Marshal(&entity.WritePoint{ID: p.ID, CID: p.CID, Source: "device", UnixTime: p.UnixTime, Fields: fields, FieldTypes: p.FieldTypes})
+	data := &entity.WritePoint{ID: p.ID, CID: p.CID, Source: "device", UnixTime: p.UnixTime, Fields: fields, FieldTypes: p.FieldTypes}
+	//b, err := json.Marshal()
+	//if err != nil {
+	//	return err
+	//}
+	//return a.mq.Publish(ctxTimeout, []string{"data", Cfg.Project, tableId, p.ID}, b)
+	return a.SavePoints(ctxTimeout, tableId, data)
+}
+
+func (a *app) SavePoints(ctx context.Context, tableId string, data *entity.WritePoint) error {
+	if tableId == "" {
+		return fmt.Errorf("table id is empty")
+	}
+	if data.ID == "" {
+		return fmt.Errorf("device id is empty")
+	}
+	if len(data.Fields) == 0 {
+		return fmt.Errorf("not enough fields")
+	}
+	if data.Source == "" {
+		data.Source = "device"
+	}
+	if data.UnixTime == 0 {
+		data.UnixTime = time.Now().UnixMilli()
+	} else if data.UnixTime > 9999999999999 || data.UnixTime < 1000000000000 {
+		return fmt.Errorf("time is either too large or too small")
+	}
+	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	if logger.IsLevelEnabled(logger.DebugLevel) {
-		newLogger.Debugf("存数据点: 设备表=%s,设备=%s,数据=%s. 保存数据成功", tableId, p.ID, string(b))
+		logger.Debugf("存数据点: 设备表=%s,设备=%s,数据=%s. 保存数据成功", tableId, data.ID, string(b))
 	}
-	return a.mq.Publish(ctxTimeout, []string{"data", Cfg.Project, tableId, p.ID}, b)
-	//return nil
+	return a.mq.Publish(ctx, []string{"data", Cfg.Project, tableId, data.ID}, b)
 }
 
 func (a *app) WriteWarning(ctx context.Context, w entity.Warn) error {
